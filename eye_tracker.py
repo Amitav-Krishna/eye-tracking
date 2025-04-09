@@ -25,7 +25,7 @@ predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
-    print("Error: Could not open webcam")
+    print("Oops, your camera is closed :(")
     exit()
 
 screen_width, screen_height = pyautogui.size()
@@ -43,16 +43,17 @@ TEXT_REGION_SIZE = 400
 TEXT_DETECTION_COOLDOWN = 1.0
 
 should_quit = False
-should_detect_text = False
+text_flag = False
 should_adjust_sensitivity = False
 
 def eye_centre(eye_points):
-    eye_center = np.mean(eye_points, axis=0).astype(int)
-    return eye_center
+    eye_ctr = np.mean(eye_points, axis=0).astype(int)
+    return eye_ctr
 
-def eye_mapping(eye_center, frame_shape):
+def eye_coords(eye_ctr, frame_shape):
+    # coords eye position to screen coords (rough estimate, adjust for sensitivity)
     h, w = frame_shape[:2]
-    x, y = eye_center
+    x, y = eye_ctr
     x_norm = (x / w - 0.5) * 2
     y_norm = (y / h - 0.5) * 2
     x_norm *= SENSITIVITY
@@ -107,15 +108,15 @@ def speak_text(text):
         print("Text will only be copied to clipboard.")
 
 def hotkeys():
-    global SENSITIVITY, should_quit, should_detect_text, should_adjust_sensitivity
+    global SENSITIVITY, should_quit, text_flag, should_adjust_sensitivity
 
     def on_q():
         global should_quit
         should_quit = True
 
     def on_t():
-        global should_detect_text
-        should_detect_text = True
+        global text_flag
+        text_flag = True
 
     def on_s():
         global should_adjust_sensitivity, SENSITIVITY
@@ -131,7 +132,7 @@ def hotkeys():
         time.sleep(0.1)
 
 def main():
-    global SENSITIVITY, should_quit, should_detect_text, should_adjust_sensitivity
+    global SENSITIVITY, should_quit, text_flag, should_adjust_sensitivity
 
     print("Starting eye tracking...")
     print("Press 'q' to quit")
@@ -162,19 +163,19 @@ def main():
             shape = face_utils.shape_to_np(shape)
             left_eye = shape[36:42]
             right_eye = shape[42:48]
-            left_eye_center = eye_center(left_eye)
-            right_eye_center = eye_center(right_eye)
-            eye_center = (left_eye_center + right_eye_center) // 2
-            screen_x, screen_y = eye_mapping(eye_center, frame.shape)
+            left_eye_ctr = eye_ctr(left_eye)
+            right_eye_ctr = eye_ctr(right_eye)
+            eye_ctr = (left_eye_ctr + right_eye_ctr) // 2
+            screen_x, screen_y = eye_coords(eye_ctr, frame.shape)
             current_x, current_y = pyautogui.position()
             target_x = int(current_x + (screen_x - current_x) * 0.3)
             target_y = int(current_y + (screen_y - current_y) * 0.3)
             pyautogui.moveTo(target_x, target_y, duration=0.1)
-            cv2.circle(frame, tuple(left_eye_center), 3, (0, 0, 255), -1)
-            cv2.circle(frame, tuple(right_eye_center), 3, (0, 0, 255), -1)
-            cv2.circle(frame, tuple(eye_center), 3, (0, 255, 0), -1)
+            cv2.circle(frame, tuple(left_eye_ctr), 3, (0, 0, 255), -1)
+            cv2.circle(frame, tuple(right_eye_ctr), 3, (0, 0, 255), -1)
+            cv2.circle(frame, tuple(eye_ctr), 3, (0, 255, 0), -1)
 
-        if should_detect_text:
+        if text_flag:
             current_time = time.time()
             if current_time - last_text_detection_time >= TEXT_DETECTION_COOLDOWN:
                 cursor_x, cursor_y = pyautogui.position()
@@ -189,7 +190,7 @@ def main():
                     speak_text(text)
                     last_spoken_text = text
                     last_text_detection_time = current_time
-            should_detect_text = False
+            text_flag = False
 
         cv2.imshow("Eye Tracker", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
