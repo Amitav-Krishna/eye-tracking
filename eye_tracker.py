@@ -120,7 +120,7 @@ def hotkeys():
     def on_s():
         global should_adjust_sensitivity, SENSITIVITY
         should_adjust_sensitivity = True
-        SENSITIVITY += 1.0 if SENSITIVITY <= 10.0 else SENSITIVIY -= 1.0
+        SENSITIVITY += 1.0 if SENSITIVITY <= 10.0 else SENSITIVITY -= 1.0
         print(f"Sensitivity adjusted to: {SENSITIVITY}")
 
     keyboard.on_press_key('q', lambda _: on_q())
@@ -162,10 +162,10 @@ def main():
             shape = face_utils.shape_to_np(shape)
             left_eye = shape[36:42]
             right_eye = shape[42:48]
-            left_eye_center = get_eye_center(left_eye)
-            right_eye_center = get_eye_center(right_eye)
+            left_eye_center = eye_center(left_eye)
+            right_eye_center = eye_center(right_eye)
             eye_center = (left_eye_center + right_eye_center) // 2
-            screen_x, screen_y = map_eye_to_screen(eye_center, frame.shape)
+            screen_x, screen_y = eye_mapping(eye_center, frame.shape)
             current_x, current_y = pyautogui.position()
             target_x = int(current_x + (screen_x - current_x) * 0.3)
             target_y = int(current_y + (screen_y - current_y) * 0.3)
